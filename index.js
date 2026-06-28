@@ -87,6 +87,41 @@ async function run() {
       res.send(result);
     });
 
+
+// ===============task========
+app.post("/tasks", async (req, res) => {
+  try {
+    const task = req.body;
+
+    task.status = "open";
+    task.createdAt = new Date();
+
+    const result = await tasksCollection.insertOne(task);
+
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to create task",
+    });
+  }
+});
+
+app.get("/tasks/client/:email", async (req, res) => {
+  const email = req.params.email;
+
+  const result = await tasksCollection
+    .find({
+      clientEmail: email,
+    })
+    .sort({
+      createdAt: -1,
+    })
+    .toArray();
+
+  res.send(result);
+});
+
+
     // MongoDB Ping
     await client.db("admin").command({ ping: 1 });
 
