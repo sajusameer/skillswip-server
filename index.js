@@ -170,6 +170,44 @@ app.get("/tasks/:id", async (req, res) => {
 });
 
 
+
+
+// ===========browse task========
+app.get("/tasks", async (req, res) => {
+  try {
+    const result = await tasksCollection
+      .find({ status: "open" })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to fetch tasks" });
+  }
+});
+
+// ==================bid====
+app.post("/bids", async (req, res) => {
+  const bid = req.body;
+
+  bid.status = "pending";
+  bid.createdAt = new Date();
+
+  const result = await bidsCollection.insertOne(bid);
+
+  res.send(result);
+});
+
+
+// ===============freelancer
+app.get("/freelancers", async (req, res) => {
+  const result = await usersCollection
+    .find({ role: "freelancer" })
+    .toArray();
+
+  res.send(result);
+});
+
     // MongoDB Ping
     await client.db("admin").command({ ping: 1 });
 
