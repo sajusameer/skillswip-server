@@ -106,17 +106,65 @@ app.post("/tasks", async (req, res) => {
   }
 });
 
+
+
 app.get("/tasks/client/:email", async (req, res) => {
   const email = req.params.email;
 
   const result = await tasksCollection
-    .find({
-      clientEmail: email,
-    })
-    .sort({
-      createdAt: -1,
-    })
+    .find({ clientEmail: email })
+    .sort({ createdAt: -1 })
     .toArray();
+
+  res.send(result);
+});
+
+app.delete("/tasks/:id", async (req, res) => {
+  const { ObjectId } = require("mongodb");
+
+  const id = req.params.id;
+
+  const result = await tasksCollection.deleteOne({
+    _id: new ObjectId(id),
+  });
+
+  res.send(result);
+});
+
+// ===============Update Task
+const { ObjectId } = require("mongodb");
+
+app.put("/tasks/:id", async (req, res) => {
+  const id = req.params.id;
+
+  const updatedTask = req.body;
+
+  const result = await tasksCollection.updateOne(
+    { _id: new ObjectId(id) },
+    {
+      $set: {
+        title: updatedTask.title,
+        category: updatedTask.category,
+        description: updatedTask.description,
+        budget: updatedTask.budget,
+        deadline: updatedTask.deadline,
+      },
+    }
+  );
+
+  res.send(result);
+}); 
+
+// ============get single task=========
+
+app.get("/tasks/:id", async (req, res) => {
+  const { ObjectId } = require("mongodb");
+
+  const id = req.params.id;
+
+  const result = await tasksCollection.findOne({
+    _id: new ObjectId(id),
+  });
 
   res.send(result);
 });
