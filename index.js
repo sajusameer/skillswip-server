@@ -14,7 +14,7 @@ const cookieParser = require("cookie-parser");
 const app = express();
 const port = process.env.PORT || 5000;
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = process.env.MONGO_DB_URI;
 
 app.use(
@@ -120,7 +120,7 @@ app.get("/tasks/client/:email", async (req, res) => {
 });
 
 app.delete("/tasks/:id", async (req, res) => {
-  const { ObjectId } = require("mongodb");
+  // const { ObjectId } = require("mongodb");
 
   const id = req.params.id;
 
@@ -132,7 +132,7 @@ app.delete("/tasks/:id", async (req, res) => {
 });
 
 // ===============Update Task
-const { ObjectId } = require("mongodb");
+// const { ObjectId } = require("mongodb");
 
 app.put("/tasks/:id", async (req, res) => {
   const id = req.params.id;
@@ -158,7 +158,7 @@ app.put("/tasks/:id", async (req, res) => {
 // ============get single task=========
 
 app.get("/tasks/:id", async (req, res) => {
-  const { ObjectId } = require("mongodb");
+  // const { ObjectId } = require("mongodb");
 
   const id = req.params.id;
 
@@ -282,6 +282,28 @@ app.get("/bids/freelancer/:email", async (req, res) => {
     });
   }
 });
+
+// view proposal or bids
+app.get("/bids/task/:taskId", async (req, res) => {
+  try {
+    const taskId = req.params.taskId;
+
+    const result = await bidsCollection
+      .find({ taskId })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to fetch proposals",
+    });
+  }
+});
+
+
+// ==================bids api accept
+
     // MongoDB Ping
     await client.db("admin").command({ ping: 1 });
 
