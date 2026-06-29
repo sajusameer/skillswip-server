@@ -470,6 +470,30 @@ app.get("/dashboard/freelancer/:email", async (req, res) => {
     });
   }
 });
+
+// ===================freelancer profile
+
+
+app.get("/freelancers/:id", async (req, res) => {
+  try {
+    const freelancer = await usersCollection.findOne({
+      _id: new ObjectId(req.params.id),
+      role: "freelancer",
+    });
+
+    if (!freelancer) {
+      return res.status(404).send({
+        message: "Freelancer not found",
+      });
+    }
+
+    res.send(freelancer);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to fetch freelancer",
+    });
+  }
+});
     // MongoDB Ping
     await client.db("admin").command({ ping: 1 });
 
