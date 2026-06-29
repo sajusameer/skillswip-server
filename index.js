@@ -104,54 +104,54 @@ client.connect(() => {
 
 
 // ===============task========
-// app.post("/tasks", async (req, res) => {
-//   try {
-//     const task = req.body;
+app.post("/tasks", async (req, res) => {
+  try {
+    const task = req.body;
 
-//     task.status = "open";
-//     task.createdAt = new Date();
+    task.status = "open";
+    task.createdAt = new Date();
 
-//     const result = await tasksCollection.insertOne(task);
+    const result = await tasksCollection.insertOne(task);
 
-//     res.send(result);
-//   } catch (error) {
-//     res.status(500).send({
-//       message: "Failed to create task",
-//     });
-//   }
-// });
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to create task",
+    });
+  }
+});
 
-// app.get("/tasks", async (req, res) => {
-//   try {
-//     const page = parseInt(req.query.page) || 1;
-//     const limit = parseInt(req.query.limit) || 9;
+app.get("/tasks", async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 9;
 
-//     const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
-//     const tasks = await tasksCollection
-//       .find({ status: "open" })
-//       .sort({ createdAt: -1 })
-//       .skip(skip)
-//       .limit(limit)
-//       .toArray();
+    const tasks = await tasksCollection
+      .find({ status: "open" })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
 
-//     const total = await tasksCollection.countDocuments({
-//       status: "open",
-//     });
+    const total = await tasksCollection.countDocuments({
+      status: "open",
+    });
 
-//     res.send({
-//       tasks,
-//       total,
-//       totalPages: Math.ceil(total / limit),
-//       currentPage: page,
-//     });
+    res.send({
+      tasks,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+    });
 
-//   } catch (error) {
-//     res.status(500).send({
-//       message: "Failed to fetch tasks",
-//     });
-//   }
-// });
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to fetch tasks",
+    });
+  }
+});
 app.get("/tasks", async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -618,35 +618,35 @@ app.put("/profile/:email", async (req, res) => {
 });
 
 // ==============payment route========
-// app.post("/create-payment-intent", async (req, res) => {
-//   try {
-//     const { amount } = req.body;
+app.post("/create-payment-intent", async (req, res) => {
+  try {
+    const { amount } = req.body;
 
-//     const paymentIntent = await stripe.paymentIntents.create({
-//       amount: amount * 100,
-//       currency: "usd",
-//       payment_method_types: ["card"],
-//     });
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount * 100,
+      currency: "usd",
+      payment_method_types: ["card"],
+    });
 
-//     res.send({
-//       clientSecret: paymentIntent.client_secret,
-//     });
-//   } catch (error) {
-//     res.status(500).send({
-//       message: error.message,
-//     });
-//   }
-// });
+    res.send({
+      clientSecret: paymentIntent.client_secret,
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: error.message,
+    });
+  }
+});
 // // =============payment details 
-// app.get("/bids/:id", async (req, res) => {
-//   const id = req.params.id;
+app.get("/bids/:id", async (req, res) => {
+  const id = req.params.id;
 
-//   const result = await bidsCollection.findOne({
-//     _id: new ObjectId(id),
-//   });
+  const result = await bidsCollection.findOne({
+    _id: new ObjectId(id),
+  });
 
-//   res.send(result);
-// });
+  res.send(result);
+});
 app.post("/payments", async (req, res) => {
   try {
     const payment = req.body;
