@@ -10,6 +10,9 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const Stripe = require("stripe");
+
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -89,24 +92,101 @@ async function run() {
 
 
 // ===============task========
-app.post("/tasks", async (req, res) => {
+// app.post("/tasks", async (req, res) => {
+//   try {
+//     const task = req.body;
+
+//     task.status = "open";
+//     task.createdAt = new Date();
+
+//     const result = await tasksCollection.insertOne(task);
+
+//     res.send(result);
+//   } catch (error) {
+//     res.status(500).send({
+//       message: "Failed to create task",
+//     });
+//   }
+// });
+
+// app.get("/tasks", async (req, res) => {
+//   try {
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 9;
+
+//     const skip = (page - 1) * limit;
+
+//     const tasks = await tasksCollection
+//       .find({ status: "open" })
+//       .sort({ createdAt: -1 })
+//       .skip(skip)
+//       .limit(limit)
+//       .toArray();
+
+//     const total = await tasksCollection.countDocuments({
+//       status: "open",
+//     });
+
+//     res.send({
+//       tasks,
+//       total,
+//       totalPages: Math.ceil(total / limit),
+//       currentPage: page,
+//     });
+
+//   } catch (error) {
+//     res.status(500).send({
+//       message: "Failed to fetch tasks",
+//     });
+//   }
+// });
+app.get("/tasks", async (req, res) => {
   try {
-    const task = req.body;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 9;
 
-    task.status = "open";
-    task.createdAt = new Date();
+    const search = req.query.search || "";
+    const category = req.query.category || "";
 
-    const result = await tasksCollection.insertOne(task);
+    const skip = (page - 1) * limit;
 
-    res.send(result);
+    const query = {
+      status: "open",
+    };
+
+    if (search) {
+      query.title = {
+        $regex: search,
+        $options: "i",
+      };
+    }
+
+    if (category && category !== "All") {
+      query.category = category;
+    }
+
+    const tasks = await tasksCollection
+      .find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    const total = await tasksCollection.countDocuments(query);
+
+    res.send({
+      tasks,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+    });
+
   } catch (error) {
     res.status(500).send({
-      message: "Failed to create task",
+      message: "Failed to fetch tasks",
     });
   }
 });
-
-
 
 app.get("/tasks/client/:email", async (req, res) => {
   const email = req.params.email;
@@ -186,17 +266,6 @@ app.get("/tasks", async (req, res) => {
   }
 });
 
-// ==================bid====
-// app.post("/bids", async (req, res) => {
-//   const bid = req.body;
-
-//   bid.status = "pending";
-//   bid.createdAt = new Date();
-
-//   const result = await bidsCollection.insertOne(bid);
-
-//   res.send(result);
-// });
 
 
 app.post("/bids", async (req, res) => {
@@ -434,24 +503,29 @@ app.get("/dashboard/client/:email", async (req, res) => {
     });
   }
 });
-// ===================freelancer dynamic api=======
+
+
+
 app.get("/dashboard/freelancer/:email", async (req, res) => {
   try {
     const email = req.params.email;
 
-    const bids = await bidsCollection
-      .find({ freelancerEmail: email })
-      .toArray();
+    const bids = await bidsCollection.find({
+      freelancerEmail: email,
+    }).toArray();
 
     const totalBids = bids.length;
 
-    const completedJobs = bids.filter(
-      (bid) => bid.status === "completed"
-    ).length;
+    const payments = await paymentsCollection.find({
+      freelancerEmail: email,
+    }).toArray();
 
-    const earnings = bids
-      .filter((bid) => bid.status === "completed")
-      .reduce((sum, bid) => sum + Number(bid.price || 0), 0);
+    const completedJobs = payments.length;
+
+    const earnings = payments.reduce(
+      (sum, payment) => sum + Number(payment.amount),
+      0
+    );
 
     const availableTasks = await tasksCollection.countDocuments({
       status: "open",
@@ -464,12 +538,16 @@ app.get("/dashboard/freelancer/:email", async (req, res) => {
       availableTasks,
       recentBids: bids.slice(0, 5),
     });
+
   } catch (error) {
     res.status(500).send({
       message: "Failed to load dashboard",
     });
   }
 });
+
+
+
 
 // ===================freelancer profile
 
@@ -494,6 +572,282 @@ app.get("/freelancers/:id", async (req, res) => {
     });
   }
 });
+
+
+// =============get profile
+app.get("/profile/:email", async (req, res) => {
+  const result = await usersCollection.findOne({
+    email: req.params.email,
+  });
+
+  res.send(result);
+});
+// ============update profile
+app.put("/profile/:email", async (req, res) => {
+  const email = req.params.email;
+  const profile = req.body;
+
+  const result = await usersCollection.updateOne(
+    { email },
+    {
+      $set: {
+        name: profile.name,
+        image: profile.image,
+        bio: profile.bio,
+        skills: profile.skills,
+        experience: profile.experience,
+        location: profile.location,
+        hourlyRate: profile.hourlyRate,
+      },
+    }
+  );
+
+  res.send(result);
+});
+
+// ==============payment route========
+// app.post("/create-payment-intent", async (req, res) => {
+//   try {
+//     const { amount } = req.body;
+
+//     const paymentIntent = await stripe.paymentIntents.create({
+//       amount: amount * 100,
+//       currency: "usd",
+//       payment_method_types: ["card"],
+//     });
+
+//     res.send({
+//       clientSecret: paymentIntent.client_secret,
+//     });
+//   } catch (error) {
+//     res.status(500).send({
+//       message: error.message,
+//     });
+//   }
+// });
+// // =============payment details 
+// app.get("/bids/:id", async (req, res) => {
+//   const id = req.params.id;
+
+//   const result = await bidsCollection.findOne({
+//     _id: new ObjectId(id),
+//   });
+
+//   res.send(result);
+// });
+app.post("/payments", async (req, res) => {
+  try {
+    const payment = req.body;
+
+    payment.createdAt = new Date();
+
+    // Save payment
+    const result = await paymentsCollection.insertOne(payment);
+
+    // Update bid status
+    await bidsCollection.updateOne(
+      {
+        _id: new ObjectId(payment.bidId),
+      },
+      {
+        $set: {
+          status: "paid",
+        },
+      }
+    );
+
+    // Update task status
+    await tasksCollection.updateOne(
+      {
+        _id: new ObjectId(payment.taskId),
+      },
+      {
+        $set: {
+          status: "completed",
+        },
+      }
+    );
+
+    res.send(result);
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).send({
+      message: "Payment failed.",
+    });
+  }
+});
+
+// =================admin========
+
+app.get("/dashboard/admin", async (req, res) => {
+  try {
+    const totalUsers = await usersCollection.countDocuments();
+
+    const totalClients = await usersCollection.countDocuments({
+      role: "client",
+    });
+
+    const totalFreelancers = await usersCollection.countDocuments({
+      role: "freelancer",
+    });
+
+    const totalTasks = await tasksCollection.countDocuments();
+
+    const totalBids = await bidsCollection.countDocuments();
+
+    const payments = await paymentsCollection.find().toArray();
+
+    const totalRevenue = payments.reduce(
+      (sum, payment) => sum + Number(payment.amount || 0),
+      0
+    );
+
+    res.send({
+      totalUsers,
+      totalClients,
+      totalFreelancers,
+      totalTasks,
+      totalBids,
+      totalRevenue,
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to load dashboard",
+    });
+  }
+});
+
+// ===get all users
+
+app.get("/admin/users", async (req, res) => {
+  try {
+    const users = await usersCollection
+      .find()
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    res.send(users);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to load users",
+    });
+  }
+});
+
+// ======update role
+app.patch("/admin/users/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { role } = req.body;
+
+    const result = await usersCollection.updateOne(
+      {
+        _id: new ObjectId(id),
+      },
+      {
+        $set: {
+          role,
+        },
+      }
+    );
+
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({
+      message: "Role update failed",
+    });
+  }
+});
+// delete user
+app.delete("/admin/users/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const result = await usersCollection.deleteOne({
+      _id: new ObjectId(id),
+    });
+
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({
+      message: "Delete failed",
+    });
+  }
+});
+// =======manage task==
+app.get("/admin/tasks", async (req, res) => {
+  try {
+    const tasks = await tasksCollection
+      .find()
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    res.send(tasks);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to fetch tasks",
+    });
+  }
+});
+// get staistic========
+app.get("/dashboard/admin/statistics", async (req, res) => {
+  try {
+    const totalUsers = await usersCollection.countDocuments();
+
+    const totalFreelancers = await usersCollection.countDocuments({
+      role: "freelancer",
+    });
+
+    const totalClients = await usersCollection.countDocuments({
+      role: "client",
+    });
+
+    const totalTasks = await tasksCollection.countDocuments();
+
+    const openTasks = await tasksCollection.countDocuments({
+      status: "open",
+    });
+
+    const completedTasks = await tasksCollection.countDocuments({
+      status: "completed",
+    });
+
+    const totalPayments = await paymentsCollection.countDocuments();
+
+    const totalRevenue = (
+      await paymentsCollection.find().toArray()
+    ).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+    res.send({
+      totalUsers,
+      totalClients,
+      totalFreelancers,
+      totalTasks,
+      openTasks,
+      completedTasks,
+      totalPayments,
+      totalRevenue,
+    });
+  } catch (err) {
+    res.status(500).send({
+      message: "Failed",
+    });
+  }
+});
+
+
+// ===========admin payments=====
+app.get("/payments", async (req, res) => {
+  const result = await paymentsCollection
+    .find()
+    .sort({ createdAt: -1 })
+    .toArray();
+
+  res.send(result);
+});
+
+
     // MongoDB Ping
     await client.db("admin").command({ ping: 1 });
 
