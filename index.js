@@ -434,7 +434,42 @@ app.get("/dashboard/client/:email", async (req, res) => {
     });
   }
 });
+// ===================freelancer dynamic api=======
+app.get("/dashboard/freelancer/:email", async (req, res) => {
+  try {
+    const email = req.params.email;
 
+    const bids = await bidsCollection
+      .find({ freelancerEmail: email })
+      .toArray();
+
+    const totalBids = bids.length;
+
+    const completedJobs = bids.filter(
+      (bid) => bid.status === "completed"
+    ).length;
+
+    const earnings = bids
+      .filter((bid) => bid.status === "completed")
+      .reduce((sum, bid) => sum + Number(bid.price || 0), 0);
+
+    const availableTasks = await tasksCollection.countDocuments({
+      status: "open",
+    });
+
+    res.send({
+      totalBids,
+      completedJobs,
+      earnings,
+      availableTasks,
+      recentBids: bids.slice(0, 5),
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to load dashboard",
+    });
+  }
+});
     // MongoDB Ping
     await client.db("admin").command({ ping: 1 });
 
