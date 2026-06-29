@@ -20,9 +20,18 @@ const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = process.env.MONGO_DB_URI;
 
+// app.use(
+//   cors({
+//     origin: "http://localhost:3000",
+//     credentials: true,
+//   })
+// );
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: [
+      "http://localhost:3000",
+      "https://skillswip.vercel.app",
+    ],
     credentials: true,
   })
 );
@@ -44,9 +53,12 @@ const client = new MongoClient(uri, {
   }
 });
 
-async function run() {
-  try {
-    await client.connect();
+// async function run() {
+//   try {
+//     await client.connect();
+client.connect(() => {
+    console.log('connecting to MOngo db');
+}).catch(console.dir)
 
     const database = client.db("skillswip");
 
@@ -849,15 +861,15 @@ app.get("/payments", async (req, res) => {
 
 
     // MongoDB Ping
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
 
     console.log("✅ MongoDB Connected Successfully");
-  } finally {
-    // await client.close();
-  }
-}
+//   } finally {
+//     // await client.close();
+//   }
+// }
 
-run().catch(console.dir);
+// run().catch(console.dir);
 
 
 
@@ -872,3 +884,5 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
+module.exports = app;
