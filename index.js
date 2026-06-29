@@ -265,6 +265,23 @@ app.get("/freelancers", async (req, res) => {
   res.send(result);
 });
 
+// ======================freelancer bids==========
+app.get("/bids/freelancer/:email", async (req, res) => {
+  try {
+    const email = req.params.email;
+
+    const result = await bidsCollection
+      .find({ freelancerEmail: email })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to fetch bids",
+    });
+  }
+});
     // MongoDB Ping
     await client.db("admin").command({ ping: 1 });
 
