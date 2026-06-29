@@ -366,6 +366,33 @@ app.patch("/bids/accept/:id", async (req, res) => {
     });
   }
 });
+// ============bids reject api
+app.patch("/bids/reject/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    await bidsCollection.updateOne(
+      {
+        _id: new ObjectId(id),
+      },
+      {
+        $set: {
+          status: "rejected",
+        },
+      }
+    );
+
+    res.send({
+      success: true,
+      message: "Bid rejected successfully",
+    });
+
+  } catch (error) {
+    res.status(500).send({
+      message: "Internal Server Error",
+    });
+  }
+});
 
     // MongoDB Ping
     await client.db("admin").command({ ping: 1 });
