@@ -187,17 +187,74 @@ app.get("/tasks", async (req, res) => {
 });
 
 // ==================bid====
+// app.post("/bids", async (req, res) => {
+//   const bid = req.body;
+
+//   bid.status = "pending";
+//   bid.createdAt = new Date();
+
+//   const result = await bidsCollection.insertOne(bid);
+
+//   res.send(result);
+// });
+
+
 app.post("/bids", async (req, res) => {
-  const bid = req.body;
+  try {
+    const bid = req.body;
 
-  bid.status = "pending";
-  bid.createdAt = new Date();
+    // Task exists?
+    const task = await tasksCollection.findOne({
+      _id: new ObjectId(bid.taskId),
+    });
 
-  const result = await bidsCollection.insertOne(bid);
+    if (!task) {
+      return res.status(404).send({
+        message: "Task not found.",
+      });
+    }
 
-  res.send(result);
+    // Own task check
+    if (task.clientEmail === bid.freelancerEmail) {
+      return res.status(400).send({
+        message: "You can't bid on your own task.",
+      });
+    }
+
+    // Task closed check
+    if (task.status !== "open") {
+      return res.status(400).send({
+        message: "Task is already closed.",
+      });
+    }
+
+    // Duplicate bid check
+    const existingBid = await bidsCollection.findOne({
+      taskId: bid.taskId,
+      freelancerEmail: bid.freelancerEmail,
+    });
+
+    if (existingBid) {
+      return res.status(400).send({
+        message: "You already submitted a proposal.",
+      });
+    }
+
+    bid.status = "pending";
+    bid.createdAt = new Date();
+
+    const result = await bidsCollection.insertOne(bid);
+
+    res.send(result);
+
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).send({
+      message: "Internal Server Error",
+    });
+  }
 });
-
 
 // ===============freelancer
 app.get("/freelancers", async (req, res) => {
