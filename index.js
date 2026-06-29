@@ -394,6 +394,47 @@ app.patch("/bids/reject/:id", async (req, res) => {
   }
 });
 
+// ===================dynamic client dashboard
+app.get("/dashboard/client/:email", async (req, res) => {
+  try {
+    const email = req.params.email;
+
+    const tasks = await tasksCollection
+      .find({ clientEmail: email })
+      .toArray();
+
+    const totalTasks = tasks.length;
+
+    const openTasks = tasks.filter(
+      (task) => task.status === "open"
+    ).length;
+
+    const completedTasks = tasks.filter(
+      (task) => task.status === "completed"
+    ).length;
+
+    const payments = await paymentsCollection
+      .find({ clientEmail: email })
+      .toArray();
+
+    const totalPayments = payments.reduce(
+      (sum, payment) => sum + Number(payment.amount || 0),
+      0
+    );
+
+    res.send({
+      totalTasks,
+      openTasks,
+      completedTasks,
+      totalPayments,
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to load dashboard",
+    });
+  }
+});
+
     // MongoDB Ping
     await client.db("admin").command({ ping: 1 });
 
