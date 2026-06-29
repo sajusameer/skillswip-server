@@ -303,6 +303,69 @@ app.get("/bids/task/:taskId", async (req, res) => {
 
 
 // ==================bids api accept
+app.patch("/bids/accept/:id", async (req, res) => {
+  try {
+    const bidId = req.params.id;
+
+    // Find selected bid
+    const bid = await bidsCollection.findOne({
+      _id: new ObjectId(bidId),
+    });
+
+    if (!bid) {
+      return res.status(404).send({
+        message: "Bid not found",
+      });
+    }
+
+    // Accept selected bid
+    await bidsCollection.updateOne(
+      { _id: new ObjectId(bidId) },
+      {
+        $set: {
+          status: "accepted",
+        },
+      }
+    );
+
+    // Reject all other bids of same task
+    await bidsCollection.updateMany(
+      {
+        taskId: bid.taskId,
+        _id: { $ne: new ObjectId(bidId) },
+      },
+      {
+        $set: {
+          status: "rejected",
+        },
+      }
+    );
+
+    // Update task status
+    await tasksCollection.updateOne(
+      {
+        _id: new ObjectId(bid.taskId),
+      },
+      {
+        $set: {
+          status: "in_progress",
+        },
+      }
+    );
+
+    res.send({
+      success: true,
+      message: "Bid accepted successfully",
+    });
+
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).send({
+      message: "Internal Server Error",
+    });
+  }
+});
 
     // MongoDB Ping
     await client.db("admin").command({ ping: 1 });
